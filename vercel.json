@@ -3,7 +3,7 @@
     "api/index.py": {
       "maxDuration": 30
     }
-  }
+  },
   "git": {
     "deploymentEnabled": {
       "main": true,
