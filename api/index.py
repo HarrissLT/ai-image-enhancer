@@ -33,19 +33,26 @@ async def enhance_image(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Failed to save temporary image file: {e}")
     
     try:
-        # Gọi model CodeFormer với tham số truyền theo đúng thứ tự (không cần api_name)
-        result_path = client.predict(
+        # Gọi model CodeFormer
+        result = client.predict(
             handle_file(temp_input_path), # Ảnh đầu vào
             0.7,                          # CodeFormer fidelity (0.0 -> 1.0)
-            True,                         # Background enhance (Làm nét nền)
-            True,                         # Face upsample (Làm nét khuôn mặt)
-            2                             # Upscale factor (Gấp 2 lần độ phân giải)
+            True,                         # Background enhance
+            True,                         # Face upsample
+            2                             # Upscale factor
         )
         
-        if os.path.exists(result_path):
-            return FileResponse(result_path, media_type="image/jpeg", filename=f"enhanced_{file.filename}")
+        # Bóc tách đường dẫn ảnh nếu Gradio trả về tuple hoặc list
+        final_path = result[0] if isinstance(result, (tuple, list)) else result
+        
+        if isinstance(final_path, dict) and "path" in final_path:
+            final_path = final_path["path"]
+
+        # Kiểm tra file và trả kết quả về
+        if final_path and os.path.exists(str(final_path)):
+            return FileResponse(str(final_path), media_type="image/jpeg", filename=f"enhanced_{file.filename}")
         else:
-            return JSONResponse(status_code=500, content={"detail": "AI processing successful but result file not found."})
+            return JSONResponse(status_code=500, content={"detail": f"AI output valid path not found. Raw output: {str(result)}"})
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": f"AI enhancement failed: {str(e)}"})
